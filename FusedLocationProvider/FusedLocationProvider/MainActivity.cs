@@ -1,108 +1,136 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Android.App;
 using Android.Gms.Common;
-using Android.Gms.Common.Apis;
 using Android.Gms.Location;
-using Android.Locations;
 using Android.OS;
 using Android.Util;
 using Android.Widget;
-using ILocationListener = Android.Gms.Location.ILocationListener;
 
 namespace FusedLocationProvider
 {
-    [Activity(Label = "FusedLocationProvider", MainLauncher = true)]
-    public class MainActivity : Activity, GoogleApiClient.IConnectionCallbacks,
-        GoogleApiClient.IOnConnectionFailedListener, ILocationListener
+    [Activity(Label = "@string/app_name", MainLauncher = true)]
+    public class MainActivity : Activity
     {
-        private bool _isGooglePlayServicesInstalled;
-        private GoogleApiClient apiClient;
-        private Button button;
-        private Button button2;
+        private static readonly long FIVE_MINUTES = 5 * 60 * 1000;
+        private static readonly long TWO_MINUTES = 2 * 60 * 1000;
+        private static readonly string KEY_REQUESTING_LOCATION_UPDATES = "requesting_location_updates";
+
+        private bool isGooglePlayServicesInstalled;
+
+        private FusedLocationProviderClient fusedLocationProviderClient;
+        private bool isRequestingLocationUpdates;
+        private LocationCallback locationCallback;
+        private LocationRequest locationRequest;
+        private Task locationTask;
+
+        private Button requestLocationUpdatesButton;
+        internal TextView latitude2;
+        internal TextView longitude2;
+        internal TextView provider2;
+
+        private Button getLastLocationButton;
         private TextView latitude;
-        private TextView latitude2;
-        private LocationRequest locRequest;
         private TextView longitude;
-        private TextView longitude2;
         private TextView provider;
-        private TextView provider2;
-
-
-        ////Interface methods
-
-        public void OnConnected(Bundle bundle)
-        {
-            // This method is called when we connect to the LocationClient. We can start location updated directly form
-            // here if desired, or we can do it in a lifecycle method, as shown above 
-
-            // You must implement this to implement the IGooglePlayServicesClientConnectionCallbacks Interface
-            Log.Info("LocationClient", "Now connected to client");
-        }
-
-        public void OnConnectionSuspended(int i)
-        {
-        }
-
-        public void OnLocationChanged(Location location)
-        {
-            // This method returns changes in the user's location if they've been requested
-
-            // You must implement this to implement the Android.Gms.Locations.ILocationListener Interface
-            Log.Debug("LocationClient", "Location updated");
-
-            latitude2.Text = "Latitude: " + location.Latitude;
-            longitude2.Text = "Longitude: " + location.Longitude;
-            provider2.Text = "Provider: " + location.Provider;
-        }
-
-        public void OnConnectionFailed(ConnectionResult bundle)
-        {
-            // This method is used to handle connection issues with the Google Play Services Client (LocationClient). 
-            // You can check if the connection has a resolution (bundle.HasResolution) and attempt to resolve it
-
-            // You must implement this to implement the IGooglePlayServicesClientOnConnectionFailedListener Interface
-            Log.Info("LocationClient", "Connection failed, attempting to reach google play services");
-        }
-
-        ////Lifecycle methods
 
         protected override void OnCreate(Bundle bundle)
         {
             base.OnCreate(bundle);
-            Log.Debug("OnCreate", "OnCreate called, initializing views...");
 
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
+            if (bundle != null)
+                isRequestingLocationUpdates = bundle.KeySet().Contains(KEY_REQUESTING_LOCATION_UPDATES) &&
+                                              bundle.GetBoolean(KEY_REQUESTING_LOCATION_UPDATES);
 
-            // UI to print last location
-            button = FindViewById<Button>(Resource.Id.myButton);
+            // UI to display last location
+            getLastLocationButton = FindViewById<Button>(Resource.Id.get_last_location_button);
             latitude = FindViewById<TextView>(Resource.Id.latitude);
             longitude = FindViewById<TextView>(Resource.Id.longitude);
             provider = FindViewById<TextView>(Resource.Id.provider);
 
-            // UI to print location updates
-            button2 = FindViewById<Button>(Resource.Id.myButton2);
+            // UI to display location updates
+            requestLocationUpdatesButton = FindViewById<Button>(Resource.Id.request_location_updates_button);
             latitude2 = FindViewById<TextView>(Resource.Id.latitude2);
             longitude2 = FindViewById<TextView>(Resource.Id.longitude2);
             provider2 = FindViewById<TextView>(Resource.Id.provider2);
 
-            _isGooglePlayServicesInstalled = IsGooglePlayServicesInstalled();
+            isGooglePlayServicesInstalled = IsGooglePlayServicesInstalled();
 
-            if (_isGooglePlayServicesInstalled)
+            if (isGooglePlayServicesInstalled)
             {
-                // pass in the Context, ConnectionListener and ConnectionFailedListener
-                apiClient = new GoogleApiClient.Builder(this, this, this)
-                    .AddApi(LocationServices.API).Build();
+                locationRequest = new LocationRequest()
+                    .SetPriority(LocationRequest.PriorityHighAccuracy)
+                    .SetInterval(FIVE_MINUTES)
+                    .SetFastestInterval(TWO_MINUTES);
+                locationCallback = new LL(this);
 
-                // generate a location request that we will pass into a call for location updates
-                locRequest = new LocationRequest();
+                fusedLocationProviderClient = LocationServices.GetFusedLocationProviderClient(this);
+                getLastLocationButton.Click += GetLastLocationButtonOnClick;
+                requestLocationUpdatesButton.Click += RequestLocationUpdatesButtonOnClick;
             }
             else
             {
-                Log.Error("OnCreate", "Google Play Services is not installed");
-                Toast.MakeText(this, "Google Play Services is not installed", ToastLength.Long).Show();
+                Toast.MakeText(this, Resource.String.missing_gps_terminating, ToastLength.Long).Show();
                 Finish();
             }
         }
+
+        private void RequestLocationUpdatesButtonOnClick(object sender, EventArgs eventArgs)
+        {
+            // No need to request location updates if we're already doing so.
+            if (isRequestingLocationUpdates) return;
+
+            isRequestingLocationUpdates = true;
+            locationTask = fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+        }
+
+        private async void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
+        {
+            getLastLocationButton.SetText(Resource.String.getting_last_location);
+            var location = await fusedLocationProviderClient.GetLastLocationAsync();
+
+            if (location == null)
+            {
+                latitude.SetText(Resource.String.location_unavailable);
+                longitude.SetText(Resource.String.location_unavailable);
+                provider.SetText(Resource.String.could_not_get_last_location);
+            }
+            else
+            {
+                latitude.Text = Resources.GetString(Resource.String.latitude_string, location.Latitude);
+                longitude.Text = Resources.GetString(Resource.String.longitude_string, location.Longitude);
+                provider.Text = Resources.GetString(Resource.String.provider_string, location.Provider);
+                getLastLocationButton.SetText(Resource.String.get_last_location_button_text);
+            }
+        }
+
+        protected override void OnSaveInstanceState(Bundle outState)
+        {
+            outState.PutBoolean(KEY_REQUESTING_LOCATION_UPDATES, isRequestingLocationUpdates);
+            base.OnSaveInstanceState(outState);
+        }
+
+        protected override void OnResume()
+        {
+            base.OnResume();
+            if (isRequestingLocationUpdates)
+                locationTask =
+                    fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+        }
+
+        #region Overrides of Activity
+
+        protected override void OnPause()
+        {
+            isRequestingLocationUpdates = false;
+            fusedLocationProviderClient.RemoveLocationUpdates(locationCallback);
+            base.OnPause();
+        }
+
+        #endregion
 
         private bool IsGooglePlayServicesInstalled()
         {
@@ -124,87 +152,33 @@ namespace FusedLocationProvider
 
             return false;
         }
+    }
 
-        protected override void OnResume()
+    public class LL : LocationCallback
+    {
+        private readonly MainActivity activity;
+
+        public LL(MainActivity activity)
         {
-            base.OnResume();
-            Log.Debug("OnResume", "OnResume called, connecting to client...");
-
-            apiClient.Connect();
-
-            // Clicking the first button will make a one-time call to get the user's last location
-            button.Click += delegate
-            {
-                if (apiClient.IsConnected)
-                {
-                    button.Text = "Getting Last Location";
-
-                    var location = LocationServices.FusedLocationApi.GetLastLocation(apiClient);
-                    if (location != null)
-                    {
-                        latitude.Text = "Latitude: " + location.Latitude;
-                        longitude.Text = "Longitude: " + location.Longitude;
-                        provider.Text = "Provider: " + location.Provider;
-                        Log.Debug("LocationClient", "Last location printed");
-                    }
-                }
-                else
-                {
-                    Log.Info("LocationClient", "Please wait for client to connect");
-                }
-            };
-
-            // Clicking the second button will send a request for continuous updates
-            button2.Click += async delegate
-            {
-                if (apiClient.IsConnected)
-                {
-                    button2.Text = "Requesting Location Updates";
-
-                    // Setting location priority to PRIORITY_HIGH_ACCURACY (100)
-                    locRequest.SetPriority(100);
-
-                    // Setting interval between updates, in milliseconds
-                    // NOTE: the default FastestInterval is 1 minute. If you want to receive location updates more than 
-                    // once a minute, you _must_ also change the FastestInterval to be less than or equal to your Interval
-                    locRequest.SetFastestInterval(500);
-                    locRequest.SetInterval(1000);
-
-                    Log.Debug("LocationRequest", "Request priority set to status code {0}, interval set to {1} ms",
-                        locRequest.Priority.ToString(), locRequest.Interval.ToString());
-
-                    // pass in a location request and LocationListener
-                    await LocationServices.FusedLocationApi.RequestLocationUpdates(apiClient, locRequest, this);
-                    // In OnLocationChanged (below), we will make calls to update the UI
-                    // with the new location data
-                }
-                else
-                {
-                    Log.Info("LocationClient", "Please wait for Client to connect");
-                }
-            };
+            this.activity = activity;
         }
 
-        protected override async void OnPause()
+
+        public override void OnLocationResult(LocationResult result)
         {
-            base.OnPause();
-            Log.Debug("OnPause", "OnPause called, stopping location updates");
-
-            if (apiClient.IsConnected)
+            if (result.Locations.Any())
             {
-                // stop location updates, passing in the LocationListener
-                await LocationServices.FusedLocationApi.RemoveLocationUpdates(apiClient, this);
-
-                apiClient.Disconnect();
+                var location = result.Locations.First();
+                activity.latitude2.Text = activity.Resources.GetString(Resource.String.latitude_string, location.Latitude);
+                activity.longitude2.Text = activity.Resources.GetString(Resource.String.longitude_string, location.Longitude);
+                activity.provider2.Text = activity.Resources.GetString(Resource.String.requesting_updates_provider_string, location.Provider);
             }
-        }
-
-        public void OnDisconnected()
-        {
-            // This method is called when we disconnect from the LocationClient.
-
-            // You must implement this to implement the IGooglePlayServicesClientConnectionCallbacks Interface
-            Log.Info("LocationClient", "Now disconnected from client");
+            else
+            {
+                activity.latitude2.SetText(Resource.String.location_unavailable);
+                activity.longitude2.SetText(Resource.String.location_unavailable);
+                activity.provider2.SetText(Resource.String.could_not_get_last_location);
+            }
         }
     }
 }
