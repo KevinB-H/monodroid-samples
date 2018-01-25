@@ -2,6 +2,7 @@
 <resources>
 	<string name="get_last_location_button_text">Get Last Location</string>
   <string name="request_location_button_text">Request Location Updates</string>
+  <string name="request_location_in_progress_button_text">Request Location Updates (In Progress)</string>
 	<string name="app_name">Fused Location Provider Sample</string>
   <string name="getting_last_location">Getting last location from the Fused Location Provider...</string>
   <string name="could_not_get_last_location">Could not get the last location!</string>

@@ -5,13 +5,14 @@ using Android.App;
 using Android.Gms.Common;
 using Android.Gms.Location;
 using Android.OS;
+using Android.Support.V7.App;
 using Android.Util;
 using Android.Widget;
 
 namespace FusedLocationProvider
 {
     [Activity(Label = "@string/app_name", MainLauncher = true)]
-    public class MainActivity : Activity
+    public class MainActivity : AppCompatActivity
     {
         private static readonly long FIVE_MINUTES = 5 * 60 * 1000;
         private static readonly long TWO_MINUTES = 2 * 60 * 1000;
@@ -25,7 +26,7 @@ namespace FusedLocationProvider
         private LocationRequest locationRequest;
         private Task locationTask;
 
-        private Button requestLocationUpdatesButton;
+        internal Button requestLocationUpdatesButton;
         internal TextView latitude2;
         internal TextView longitude2;
         internal TextView provider2;
@@ -78,13 +79,14 @@ namespace FusedLocationProvider
             }
         }
 
-        private void RequestLocationUpdatesButtonOnClick(object sender, EventArgs eventArgs)
+        private async  void RequestLocationUpdatesButtonOnClick(object sender, EventArgs eventArgs)
         {
             // No need to request location updates if we're already doing so.
             if (isRequestingLocationUpdates) return;
 
             isRequestingLocationUpdates = true;
-            locationTask = fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+            await fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+            requestLocationUpdatesButton.SetText(Resource.String.request_location_in_progress_button_text);
         }
 
         private async void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
@@ -163,7 +165,6 @@ namespace FusedLocationProvider
             this.activity = activity;
         }
 
-
         public override void OnLocationResult(LocationResult result)
         {
             if (result.Locations.Any())
@@ -178,6 +179,7 @@ namespace FusedLocationProvider
                 activity.latitude2.SetText(Resource.String.location_unavailable);
                 activity.longitude2.SetText(Resource.String.location_unavailable);
                 activity.provider2.SetText(Resource.String.could_not_get_last_location);
+                activity.requestLocationUpdatesButton.SetText(Resource.String.request_location_button_text);
             }
         }
     }
