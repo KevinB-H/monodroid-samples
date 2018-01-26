@@ -9,7 +9,6 @@ using Android.Gms.Location;
 using Android.OS;
 using Android.Support.Design.Widget;
 using Android.Support.V4.App;
-using Android.Support.V4.Content;
 using Android.Support.V7.App;
 using Android.Util;
 using Android.Views;
@@ -25,13 +24,10 @@ namespace FusedLocationProvider
         private const long TWO_MINUTES = 2 * ONE_MINUTE;
 
         private static readonly int RC_PERMISSIONS_CHECK = 1000;
-//        private static readonly int RC_PERMISSION_FOR_LAST_LOCATION = 1000;
-//        private static readonly int RC_PERMISSION_FOR_LOCATION_UPDATES = 1100;
 
         private static readonly string KEY_REQUESTING_LOCATION_UPDATES = "requesting_location_updates";
 
         private FusedLocationProviderClient fusedLocationProviderClient;
-        private Task locationTask;
         private Button getLastLocationButton;
         private bool isGooglePlayServicesInstalled;
         private bool isRequestingLocationUpdates;
@@ -39,6 +35,7 @@ namespace FusedLocationProvider
         internal TextView latitude2;
         private LocationCallback locationCallback;
         private LocationRequest locationRequest;
+        private Task locationTask;
         private TextView longitude;
         internal TextView longitude2;
         private TextView provider;
@@ -142,10 +139,7 @@ namespace FusedLocationProvider
             if (ActivityCompat.ShouldShowRequestPermissionRationale(this, Manifest.Permission.AccessFineLocation))
                 Snackbar.Make(rootLayout, Resource.String.permission_location_rationale, Snackbar.LengthIndefinite)
                     .SetAction(Resource.String.ok,
-                        delegate
-                        {
-                            ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.Camera}, RC_PERMISSIONS_CHECK);
-                        })
+                        delegate { ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.Camera}, RC_PERMISSIONS_CHECK); })
                     .Show();
             else
                 ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.Camera}, RC_PERMISSIONS_CHECK);
@@ -155,10 +149,7 @@ namespace FusedLocationProvider
         {
             if (requestCode == RC_PERMISSIONS_CHECK)
             {
-                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted)
-                {
-                    Finish();
-                }
+                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted) Finish();
             }
             else
             {
@@ -192,13 +183,10 @@ namespace FusedLocationProvider
 
             var p = CheckSelfPermission(Manifest.Permission.AccessFineLocation);
 
-            bool okay = Permission.Granted == p;
+            var okay = Permission.Granted == p;
             if (okay)
             {
-                if (isRequestingLocationUpdates)
-                {
-                    StartRequestingLocationUpdates();
-                }
+                if (isRequestingLocationUpdates) StartRequestingLocationUpdates();
             }
             else
             {
