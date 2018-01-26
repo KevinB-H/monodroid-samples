@@ -9,6 +9,7 @@ using Android.Gms.Location;
 using Android.OS;
 using Android.Support.Design.Widget;
 using Android.Support.V4.App;
+using Android.Support.V4.Content;
 using Android.Support.V7.App;
 using Android.Util;
 using Android.Views;
@@ -23,7 +24,8 @@ namespace FusedLocationProvider
         const long FIVE_MINUTES = 5 * ONE_MINUTE;
         const long TWO_MINUTES = 2 * ONE_MINUTE;
 
-        static readonly int RC_PERMISSIONS_CHECK = 1000;
+        static readonly int RC_LAST_LOCATION_PERMISSION_CHECK = 1000;
+        static readonly int RC_LOCATION_UPDATES_PERMISSION_CHECK = 1100;
 
         static readonly string KEY_REQUESTING_LOCATION_UPDATES = "requesting_location_updates";
 
@@ -44,6 +46,32 @@ namespace FusedLocationProvider
         internal Button requestLocationUpdatesButton;
 
         View rootLayout;
+
+        public override async void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+        {
+            if (requestCode == RC_LAST_LOCATION_PERMISSION_CHECK || requestCode == RC_LOCATION_UPDATES_PERMISSION_CHECK)
+            {
+                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted)
+                {
+                    Finish();
+                }
+
+                if (requestCode == RC_LAST_LOCATION_PERMISSION_CHECK)
+                {
+                    await GetLastLocationFromDevice();
+                }
+                else
+                {
+                    StartRequestingLocationUpdates();
+                }
+            }
+            else
+            {
+                Log.Debug("FusedLocationProvider", "Don't know how to handle requestCode " + requestCode);
+            }
+
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
 
 
         protected override void OnCreate(Bundle bundle)
@@ -113,22 +141,22 @@ namespace FusedLocationProvider
             }
         }
 
-         void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
+        async void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
         {
-            if (ActivityCompat.CheckSelfPermission(this, Manifest.Permission.Camera) == Permission.Granted)
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.Camera) == Permission.Granted)
             {
-                 GetLastLocationFromDevice();
+                await GetLastLocationFromDevice();
             }
             else
             {
-                RequestLocationPermission();
+                RequestLocationPermission(RC_LAST_LOCATION_PERMISSION_CHECK);
             }
         }
 
-        void  GetLastLocationFromDevice()
+        async Task GetLastLocationFromDevice()
         {
             getLastLocationButton.SetText(Resource.String.getting_last_location);
-            var location =  fusedLocationProviderClient.GetLastLocationAsync().Result;
+            var location = await fusedLocationProviderClient.GetLastLocationAsync();
 
             if (location == null)
             {
@@ -145,36 +173,22 @@ namespace FusedLocationProvider
             }
         }
 
-        void RequestLocationPermission()
+        void RequestLocationPermission(int requestCode)
         {
             if (ActivityCompat.ShouldShowRequestPermissionRationale(this, Manifest.Permission.AccessFineLocation))
             {
                 Snackbar.Make(rootLayout, Resource.String.permission_location_rationale, Snackbar.LengthIndefinite)
                         .SetAction(Resource.String.ok,
-                                   delegate { ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, RC_PERMISSIONS_CHECK); })
+                                   delegate
+                                   {
+                                       ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, requestCode);
+                                   })
                         .Show();
             }
             else
             {
-                ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, RC_PERMISSIONS_CHECK);
+                ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, requestCode);
             }
-        }
-
-        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
-        {
-            if (requestCode == RC_PERMISSIONS_CHECK)
-            {
-                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted)
-                {
-                    Finish();
-                }
-            }
-            else
-            {
-                Log.Debug("FusedLocationProvider", "Don't know how to handle requestCode " + requestCode);
-            }
-
-            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
 
         void StartRequestingLocationUpdates()
@@ -198,11 +212,7 @@ namespace FusedLocationProvider
         protected override void OnResume()
         {
             base.OnResume();
-
-            var p = CheckSelfPermission(Manifest.Permission.AccessFineLocation);
-
-            var okay = Permission.Granted == p;
-            if (okay)
+            if (CheckSelfPermission(Manifest.Permission.AccessFineLocation) == Permission.Granted)
             {
                 if (isRequestingLocationUpdates)
                 {
@@ -211,7 +221,7 @@ namespace FusedLocationProvider
             }
             else
             {
-                RequestLocationPermission();
+                RequestLocationPermission(RC_LAST_LOCATION_PERMISSION_CHECK);
             }
         }
 
@@ -236,7 +246,6 @@ namespace FusedLocationProvider
                 Log.Error("ManActivity", "There is a problem with Google Play Services on this device: {0} - {1}",
                           queryResult, errorString);
 
-                // Show error dialog to let user debug google play services
             }
 
             return false;
