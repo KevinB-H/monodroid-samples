@@ -18,7 +18,7 @@ using Android.Widget;
 namespace FusedLocationProvider
 {
     [Activity(Label = "@string/app_name", MainLauncher = true)]
-    public class MainActivity : AppCompatActivity, ActivityCompat.IOnRequestPermissionsResultCallback
+    public class MainActivity : AppCompatActivity
     {
         const long ONE_MINUTE = 60 * 1000;
         const long FIVE_MINUTES = 5 * ONE_MINUTE;
@@ -37,7 +37,6 @@ namespace FusedLocationProvider
         internal TextView latitude2;
         LocationCallback locationCallback;
         LocationRequest locationRequest;
-        Task locationTask;
         TextView longitude;
         internal TextView longitude2;
         TextView provider;
@@ -194,7 +193,7 @@ namespace FusedLocationProvider
         void StartRequestingLocationUpdates()
         {
             requestLocationUpdatesButton.SetText(Resource.String.request_location_in_progress_button_text);
-            locationTask = fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+            fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
         }
 
         void StopRequestionLocationUpdates()
