@@ -17,33 +17,33 @@ using Android.Widget;
 namespace FusedLocationProvider
 {
     [Activity(Label = "@string/app_name", MainLauncher = true)]
-    public class MainActivity : AppCompatActivity
+    public class MainActivity : AppCompatActivity, ActivityCompat.IOnRequestPermissionsResultCallback
     {
-        private const long ONE_MINUTE = 60 * 1000;
-        private const long FIVE_MINUTES = 5 * ONE_MINUTE;
-        private const long TWO_MINUTES = 2 * ONE_MINUTE;
+        const long ONE_MINUTE = 60 * 1000;
+        const long FIVE_MINUTES = 5 * ONE_MINUTE;
+        const long TWO_MINUTES = 2 * ONE_MINUTE;
 
-        private static readonly int RC_PERMISSIONS_CHECK = 1000;
+        static readonly int RC_PERMISSIONS_CHECK = 1000;
 
-        private static readonly string KEY_REQUESTING_LOCATION_UPDATES = "requesting_location_updates";
+        static readonly string KEY_REQUESTING_LOCATION_UPDATES = "requesting_location_updates";
 
-        private FusedLocationProviderClient fusedLocationProviderClient;
-        private Button getLastLocationButton;
-        private bool isGooglePlayServicesInstalled;
-        private bool isRequestingLocationUpdates;
-        private TextView latitude;
+        FusedLocationProviderClient fusedLocationProviderClient;
+        Button getLastLocationButton;
+        bool isGooglePlayServicesInstalled;
+        bool isRequestingLocationUpdates;
+        TextView latitude;
         internal TextView latitude2;
-        private LocationCallback locationCallback;
-        private LocationRequest locationRequest;
-        private Task locationTask;
-        private TextView longitude;
+        LocationCallback locationCallback;
+        LocationRequest locationRequest;
+        Task locationTask;
+        TextView longitude;
         internal TextView longitude2;
-        private TextView provider;
+        TextView provider;
         internal TextView provider2;
 
         internal Button requestLocationUpdatesButton;
 
-        private View rootLayout;
+        View rootLayout;
 
 
         protected override void OnCreate(Bundle bundle)
@@ -51,10 +51,14 @@ namespace FusedLocationProvider
             base.OnCreate(bundle);
 
             if (bundle != null)
+            {
                 isRequestingLocationUpdates = bundle.KeySet().Contains(KEY_REQUESTING_LOCATION_UPDATES) &&
                                               bundle.GetBoolean(KEY_REQUESTING_LOCATION_UPDATES);
+            }
             else
+            {
                 isRequestingLocationUpdates = false;
+            }
 
 
             // Set our view from the "main" layout resource
@@ -77,9 +81,9 @@ namespace FusedLocationProvider
             if (isGooglePlayServicesInstalled)
             {
                 locationRequest = new LocationRequest()
-                    .SetPriority(LocationRequest.PriorityHighAccuracy)
-                    .SetInterval(FIVE_MINUTES)
-                    .SetFastestInterval(TWO_MINUTES);
+                                  .SetPriority(LocationRequest.PriorityHighAccuracy)
+                                  .SetInterval(FIVE_MINUTES)
+                                  .SetFastestInterval(TWO_MINUTES);
                 locationCallback = new FusedLocationProviderCallback(this);
 
                 fusedLocationProviderClient = LocationServices.GetFusedLocationProviderClient(this);
@@ -89,12 +93,12 @@ namespace FusedLocationProvider
             else
             {
                 Snackbar.Make(rootLayout, Resource.String.missing_googleplayservices_terminating, Snackbar.LengthIndefinite)
-                    .SetAction(Resource.String.ok, delegate { Finish(); })
-                    .Show();
+                        .SetAction(Resource.String.ok, delegate { Finish(); })
+                        .Show();
             }
         }
 
-        private async void RequestLocationUpdatesButtonOnClick(object sender, EventArgs eventArgs)
+        async void RequestLocationUpdatesButtonOnClick(object sender, EventArgs eventArgs)
         {
             // No need to request location updates if we're already doing so.
             if (isRequestingLocationUpdates)
@@ -109,15 +113,22 @@ namespace FusedLocationProvider
             }
         }
 
-        private async void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
+         void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
         {
-            await GetLastLocationFromDevice();
+            if (ActivityCompat.CheckSelfPermission(this, Manifest.Permission.Camera) == Permission.Granted)
+            {
+                 GetLastLocationFromDevice();
+            }
+            else
+            {
+                RequestLocationPermission();
+            }
         }
 
-        private async Task GetLastLocationFromDevice()
+        void  GetLastLocationFromDevice()
         {
             getLastLocationButton.SetText(Resource.String.getting_last_location);
-            var location = await fusedLocationProviderClient.GetLastLocationAsync();
+            var location =  fusedLocationProviderClient.GetLastLocationAsync().Result;
 
             if (location == null)
             {
@@ -134,22 +145,29 @@ namespace FusedLocationProvider
             }
         }
 
-        private void RequestLocationPermission()
+        void RequestLocationPermission()
         {
             if (ActivityCompat.ShouldShowRequestPermissionRationale(this, Manifest.Permission.AccessFineLocation))
+            {
                 Snackbar.Make(rootLayout, Resource.String.permission_location_rationale, Snackbar.LengthIndefinite)
-                    .SetAction(Resource.String.ok,
-                        delegate { ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.Camera}, RC_PERMISSIONS_CHECK); })
-                    .Show();
+                        .SetAction(Resource.String.ok,
+                                   delegate { ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, RC_PERMISSIONS_CHECK); })
+                        .Show();
+            }
             else
-                ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.Camera}, RC_PERMISSIONS_CHECK);
+            {
+                ActivityCompat.RequestPermissions(this, new[] {Manifest.Permission.AccessFineLocation}, RC_PERMISSIONS_CHECK);
+            }
         }
 
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
         {
             if (requestCode == RC_PERMISSIONS_CHECK)
             {
-                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted) Finish();
+                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted)
+                {
+                    Finish();
+                }
             }
             else
             {
@@ -159,13 +177,13 @@ namespace FusedLocationProvider
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
 
-        private void StartRequestingLocationUpdates()
+        void StartRequestingLocationUpdates()
         {
             requestLocationUpdatesButton.SetText(Resource.String.request_location_in_progress_button_text);
             locationTask = fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
         }
 
-        private void StopRequestionLocationUpdates()
+        void StopRequestionLocationUpdates()
         {
             requestLocationUpdatesButton.SetText(Resource.String.request_location_button_text);
             fusedLocationProviderClient.RemoveLocationUpdatesAsync(locationCallback);
@@ -186,7 +204,10 @@ namespace FusedLocationProvider
             var okay = Permission.Granted == p;
             if (okay)
             {
-                if (isRequestingLocationUpdates) StartRequestingLocationUpdates();
+                if (isRequestingLocationUpdates)
+                {
+                    StartRequestingLocationUpdates();
+                }
             }
             else
             {
@@ -200,7 +221,7 @@ namespace FusedLocationProvider
             base.OnPause();
         }
 
-        private bool IsGooglePlayServicesInstalled()
+        bool IsGooglePlayServicesInstalled()
         {
             var queryResult = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable(this);
             if (queryResult == ConnectionResult.Success)
@@ -213,7 +234,7 @@ namespace FusedLocationProvider
             {
                 var errorString = GoogleApiAvailability.Instance.GetErrorString(queryResult);
                 Log.Error("ManActivity", "There is a problem with Google Play Services on this device: {0} - {1}",
-                    queryResult, errorString);
+                          queryResult, errorString);
 
                 // Show error dialog to let user debug google play services
             }
