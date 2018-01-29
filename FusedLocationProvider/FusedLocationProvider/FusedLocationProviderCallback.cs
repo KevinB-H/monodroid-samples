@@ -2,7 +2,8 @@ using System.Linq;
 
 using Android.Gms.Location;
 
-namespace FusedLocationProvider
+
+namespace com.xamarin.samples.location.fusedlocationprovider
 {
     public class FusedLocationProviderCallback : LocationCallback
     {

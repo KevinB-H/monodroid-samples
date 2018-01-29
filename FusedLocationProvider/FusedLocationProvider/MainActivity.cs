@@ -15,7 +15,7 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 
-namespace FusedLocationProvider
+namespace com.xamarin.samples.location.fusedlocationprovider
 {
     [Activity(Label = "@string/app_name", MainLauncher = true)]
     public class MainActivity : AppCompatActivity

@@ -9,7 +9,7 @@
     <ProjectGuid>{9940B07C-967A-49F1-80D8-2557D06DF579}</ProjectGuid>
     <ProjectTypeGuids>{EFBA0AD7-5A72-4C68-AF49-83D382785DCF};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
-    <RootNamespace>FusedLocationProvider</RootNamespace>
+    <RootNamespace>com.xamarin.samples.location.fusedlocationprovider</RootNamespace>
     <AndroidApplication>True</AndroidApplication>
     <AndroidResgenFile>Resources\Resource.designer.cs</AndroidResgenFile>
     <AndroidResgenClass>Resource</AndroidResgenClass>
