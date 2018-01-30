@@ -50,23 +50,29 @@ namespace com.xamarin.samples.location.fusedlocationprovider
         {
             if (requestCode == RC_LAST_LOCATION_PERMISSION_CHECK || requestCode == RC_LOCATION_UPDATES_PERMISSION_CHECK)
             {
-                if (grantResults.Length == 1 && grantResults[0] != Permission.Granted)
+                if (grantResults.Length == 1 && grantResults[0] == Permission.Granted)
                 {
-                    Finish();
-                }
-
-                if (requestCode == RC_LAST_LOCATION_PERMISSION_CHECK)
-                {
-                    await GetLastLocationFromDevice();
+                    if (requestCode == RC_LAST_LOCATION_PERMISSION_CHECK)
+                    {
+                        await GetLastLocationFromDevice();
+                    }
+                    else
+                    {
+                        await StartRequestingLocationUpdates();
+                        isRequestingLocationUpdates = true;
+                    }
                 }
                 else
                 {
-                    StartRequestingLocationUpdates();
+                    Snackbar.Make(rootLayout, Resource.String.permission_not_granted_termininating_app, Snackbar.LengthIndefinite)
+                            .SetAction(Resource.String.ok, delegate { FinishAndRemoveTask(); })
+                            .Show();
+                    return;
                 }
             }
             else
             {
-                Log.Debug("FusedLocationProvider", "Don't know how to handle requestCode " + requestCode);
+                Log.Debug("FusedLocationProviderSample", "Don't know how to handle requestCode " + requestCode);
             }
 
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -86,7 +92,6 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             {
                 isRequestingLocationUpdates = false;
             }
-
 
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
@@ -119,8 +124,9 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             }
             else
             {
+                // If there is no Google Play Services installed, then this sample won't run.
                 Snackbar.Make(rootLayout, Resource.String.missing_googleplayservices_terminating, Snackbar.LengthIndefinite)
-                        .SetAction(Resource.String.ok, delegate { Finish(); })
+                        .SetAction(Resource.String.ok, delegate { FinishAndRemoveTask(); })
                         .Show();
             }
         }
@@ -131,18 +137,25 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             if (isRequestingLocationUpdates)
             {
                 isRequestingLocationUpdates = false;
-                fusedLocationProviderClient.RemoveLocationUpdates(locationCallback);
+                StopRequestionLocationUpdates();
             }
             else
             {
-                isRequestingLocationUpdates = true;
-                await fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+                if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.AccessFineLocation) == Permission.Granted)
+                {
+                    await StartRequestingLocationUpdates();
+                    isRequestingLocationUpdates = true;
+                }
+                else
+                {
+                    RequestLocationPermission(RC_LAST_LOCATION_PERMISSION_CHECK);
+                }
             }
         }
 
         async void GetLastLocationButtonOnClick(object sender, EventArgs eventArgs)
         {
-            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.Camera) == Permission.Granted)
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.AccessFineLocation) == Permission.Granted)
             {
                 await GetLastLocationFromDevice();
             }
@@ -190,16 +203,21 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             }
         }
 
-        void StartRequestingLocationUpdates()
+        async Task StartRequestingLocationUpdates()
         {
             requestLocationUpdatesButton.SetText(Resource.String.request_location_in_progress_button_text);
-            fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+            await fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
+
         }
 
-        void StopRequestionLocationUpdates()
+        async void StopRequestionLocationUpdates()
         {
+            latitude2.Text = string.Empty;
+            longitude2.Text = string.Empty;
+            provider2.Text = string.Empty;
+
             requestLocationUpdatesButton.SetText(Resource.String.request_location_button_text);
-            fusedLocationProviderClient.RemoveLocationUpdatesAsync(locationCallback);
+            await fusedLocationProviderClient.RemoveLocationUpdatesAsync(locationCallback);
         }
 
         protected override void OnSaveInstanceState(Bundle outState)
@@ -242,9 +260,8 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             if (GoogleApiAvailability.Instance.IsUserResolvableError(queryResult))
             {
                 var errorString = GoogleApiAvailability.Instance.GetErrorString(queryResult);
-                Log.Error("ManActivity", "There is a problem with Google Play Services on this device: {0} - {1}",
+                Log.Error("MainActivity", "There is a problem with Google Play Services on this device: {0} - {1}",
                           queryResult, errorString);
-
             }
 
             return false;

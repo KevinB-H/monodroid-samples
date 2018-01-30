@@ -117,28 +117,25 @@ namespace com.xamarin.samples.location.locationmanager
                 isRequestingLocationUpdates = false;
             }
 
-            SetContentView(Resource.Layout.Main);
-
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
             rootLayout = FindViewById(Resource.Id.root_layout);
 
+			getLastLocationButton = FindViewById<Button>(Resource.Id.get_last_location_button);
+			latitude = FindViewById<TextView>(Resource.Id.latitude);
+			longitude = FindViewById<TextView>(Resource.Id.longitude);
+			provider = FindViewById<TextView>(Resource.Id.provider);
+
+			requestLocationUpdatesButton = FindViewById<Button>(Resource.Id.request_location_updates_button);
+			latitude2 = FindViewById<TextView>(Resource.Id.latitude2);
+			longitude2 = FindViewById<TextView>(Resource.Id.longitude2);
+			provider2 = FindViewById<TextView>(Resource.Id.provider2);
+			
             if (locationManager.AllProviders.Contains(LocationManager.NetworkProvider)
                 && locationManager.IsProviderEnabled(LocationManager.NetworkProvider))
             {
-                // UI to display last location
-                getLastLocationButton = FindViewById<Button>(Resource.Id.get_last_location_button);
                 getLastLocationButton.Click += GetLastLocationButtonOnClick;
-                latitude = FindViewById<TextView>(Resource.Id.latitude);
-                longitude = FindViewById<TextView>(Resource.Id.longitude);
-                provider = FindViewById<TextView>(Resource.Id.provider);
-
-                // UI to display location updates
-                requestLocationUpdatesButton = FindViewById<Button>(Resource.Id.request_location_updates_button);
                 requestLocationUpdatesButton.Click += RequestLocationUpdatesButtonOnClick;
-                latitude2 = FindViewById<TextView>(Resource.Id.latitude2);
-                longitude2 = FindViewById<TextView>(Resource.Id.longitude2);
-                provider2 = FindViewById<TextView>(Resource.Id.provider2);
             }
             else
             {
@@ -152,8 +149,8 @@ namespace com.xamarin.samples.location.locationmanager
         {
             if (isRequestingLocationUpdates)
             {
-                StopRequestingLocationUpdates();
                 isRequestingLocationUpdates = false;
+                StopRequestingLocationUpdates();
             }
             else
             {
