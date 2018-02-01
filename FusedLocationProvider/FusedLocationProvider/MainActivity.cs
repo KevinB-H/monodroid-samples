@@ -207,7 +207,6 @@ namespace com.xamarin.samples.location.fusedlocationprovider
         {
             requestLocationUpdatesButton.SetText(Resource.String.request_location_in_progress_button_text);
             await fusedLocationProviderClient.RequestLocationUpdatesAsync(locationRequest, locationCallback);
-
         }
 
         async void StopRequestionLocationUpdates()
@@ -226,14 +225,14 @@ namespace com.xamarin.samples.location.fusedlocationprovider
             base.OnSaveInstanceState(outState);
         }
 
-        protected override void OnResume()
+        protected override async void OnResume()
         {
             base.OnResume();
             if (CheckSelfPermission(Manifest.Permission.AccessFineLocation) == Permission.Granted)
             {
                 if (isRequestingLocationUpdates)
                 {
-                    StartRequestingLocationUpdates();
+                    await StartRequestingLocationUpdates();
                 }
             }
             else

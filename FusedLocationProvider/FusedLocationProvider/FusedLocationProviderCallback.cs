@@ -1,18 +1,25 @@
 using System.Linq;
 
 using Android.Gms.Location;
-
+using Android.Util;
 
 namespace com.xamarin.samples.location.fusedlocationprovider
 {
     public class FusedLocationProviderCallback : LocationCallback
     {
-        private readonly MainActivity activity;
+        readonly MainActivity activity;
 
         public FusedLocationProviderCallback(MainActivity activity)
         {
             this.activity = activity;
         }
+
+        #region Overrides of LocationCallback
+        public override void OnLocationAvailability(LocationAvailability locationAvailability)
+        {
+            Log.Debug("FusedLocationProviderSample", "IsLocationAvailable: {0}",locationAvailability.IsLocationAvailable);
+        }
+        #endregion
 
         public override void OnLocationResult(LocationResult result)
         {
